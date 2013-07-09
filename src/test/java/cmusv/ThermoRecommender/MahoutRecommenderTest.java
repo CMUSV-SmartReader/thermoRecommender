@@ -14,7 +14,7 @@ import junit.framework.TestCase;
 public class MahoutRecommenderTest extends TestCase {
     MahoutRecommenderAdapter adapter;
     public MahoutRecommenderTest(){
-        MongoAdapter reader = new MongoAdapter("ec2.lydian.tw", 27017, "thermoreader-test", null, null);
+        MongoAdapter reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader", null, null);
         adapter = new MahoutRecommenderAdapter(reader);
     }
     public void testGetDB(){

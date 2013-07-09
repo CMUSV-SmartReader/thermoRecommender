@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +35,9 @@ public class MongoAdapter {
     public MongoAdapter(){
         Map<String, String> env = System.getenv();
         
-        this.dbHost = (env.containsKey("MONGO_HOST")) ? env.get("MONGO_HOST") : "localhost";
+        this.dbHost = (env.containsKey("MONGO_HOST")) ? env.get("MONGO_HOST") : "test.lydian.tw";
         this.dbPort = (env.containsKey("MONGO_PORT")) ? Integer.parseInt(env.get("MONGO_PORT")) : 27017;
-        this.dbName = (env.containsKey("MONGO_DB_NAME")) ? env.get("MONGO_DB_NAME"): "test";
+        this.dbName = (env.containsKey("MONGO_DB_NAME")) ? env.get("MONGO_DB_NAME"): "thermoreader-test";
         this.dbUser = (env.containsKey("MONGO_DB_USER")) ? env.get("MONGO_DB_USER") : null;
         this.dbPassword = (env.containsKey("MONGO_DB_PASSWORD")) ? env.get("MONGO_DB_PASSWORD") : null;
         
@@ -50,6 +51,12 @@ public class MongoAdapter {
     }
     public DB getDB(){
         return db;
+    }
+    public HashSet<ObjectId> getArticleIds(){
+        this.makeConnection();
+        HashSet<ObjectId> articles = new HashSet<ObjectId>();
+        return articles;
+        
     }
     public boolean makeConnection(){
         try {
