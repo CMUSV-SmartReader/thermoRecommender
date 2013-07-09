@@ -24,7 +24,7 @@
 	</build>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<jvm>${java.home}../bin/java.exe</jvm>
+		<jvm>${java.home}/../bin/java.exe</jvm>
 	</properties>
 
 	<dependencies>
