@@ -3,11 +3,16 @@ thermoRecommender
 
 Use Mahout for recommendation
 
-Current Recommendation: user similarity
+Recommendataion 
+==============
 
-ToDo List
-=========
-1. article popularity
-2. article similarity
+Current Recommendation Features:
 
+* Global article popularity  
+* Time 
+* User similarity (Based on reading the same articles)
+
+ToDo List: 
+
+* article similarity ( word distribution)
 
