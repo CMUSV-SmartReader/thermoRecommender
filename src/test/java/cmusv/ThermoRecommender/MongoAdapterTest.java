@@ -6,7 +6,7 @@ public class MongoAdapterTest extends TestCase {
     protected MongoAdapter reader;
     public MongoAdapterTest(String testName){
         super(testName);
-        reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader-test", null, null);
+        reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader", null, null);
     }
     
     public void testConnection()

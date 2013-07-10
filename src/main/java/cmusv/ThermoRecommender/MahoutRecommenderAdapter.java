@@ -62,6 +62,16 @@ public class MahoutRecommenderAdapter {
         for(Long userID :prefs.keySet()){
             userData.put(userID, new  GenericUserPreferenceArray(prefs.get(userID)));
         }
+        cursor =reader.getCollection("User").find();
+        while(cursor.hasNext()){
+            ObjectId uID = (ObjectId) cursor.next().get("_id");
+            Long userID = (long) uID.hashCode();
+            
+            if(!userData.containsKey(userID)){
+                userData.put(userID, new GenericUserPreferenceArray(0));
+                userIdMapping.put(userID, uID);
+            }
+        }
         return new GenericDataModel(userData);
     }
     

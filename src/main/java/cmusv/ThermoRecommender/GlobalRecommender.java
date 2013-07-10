@@ -22,6 +22,8 @@ import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.apache.mahout.cf.taste.model.Preference;
+
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -85,7 +87,7 @@ public class GlobalRecommender implements Recommender{
             if(!article.containsField("popularity")){
                 popularity = 0d;
             }
-            if(article.get("popularity").getClass().equals("java.lang.Integer")){
+            else if(article.get("popularity").getClass().equals(Integer.class)){
                 popularity = (Integer) article.get("popularity") * 1.0d ;
             }
             else{
@@ -103,18 +105,24 @@ public class GlobalRecommender implements Recommender{
     }
     public List<RecommendedItem> recommend(long userID, int howMany)
             throws TasteException {
-        System.out.println(userID);
         ObjectId uid = MahoutRecommenderAdapter.userIdMapping.get(userID);
-        DBCollection userArticles = dbAdapter.getCollection("UserArticle");
-        DBCursor cursor = userArticles.find(new BasicDBObject().append("user.$id", uid));
+        DBCollection users = dbAdapter.getCollection("User");
+        DBCollection userArtocles = dbAdapter.getCollection("UserArticle");
+        DBObject user = users.findOne(new BasicDBObject().append("_id", uid));
+        System.out.println("Users: " + user.get("articles"));
+        BasicDBList articles = (BasicDBList) user.get("articles");
         List<RecommendedItem> result = new ArrayList<RecommendedItem>();
-        while(cursor.hasNext()){
-            DBObject userArticle =  cursor.next();
+        if(articles == null){
+            return result;
+        }
+        for(Object obj: articles ){
+            DBRef article = (DBRef) obj;
+            ObjectId articleID = (ObjectId)article.getId();
+            double score = (!globalPreferences.containsKey(articleID))? 0.5: globalPreferences.get(articleID);
             
-            if((Boolean)userArticle.get("isRead")) continue;
-            ObjectId articleId = (ObjectId) ((DBRef)userArticle.get("article")).getId();
-            double score = globalPreferences.get(articleId);
-            result.add(new GenericRecommendedItem(articleId.hashCode(), (float) score ));
+            if(userArtocles.findOne(new BasicDBObject().append("user.$id", uid).append("article.$id", articleID)) != null)
+                continue;
+            result.add(new GenericRecommendedItem(articleID.hashCode(), (float) score ));
         }
         
         Collections.sort(result, new Comparator<RecommendedItem>(){
@@ -123,7 +131,9 @@ public class GlobalRecommender implements Recommender{
                 
                 return -Float.compare(r1.getValue(), r2.getValue());
             }});
+        System.out.println(result.size());
         result = result.subList(0, Math.min(howMany, result.size()));
+        
         return result;
     }
     public List<RecommendedItem> recommend(long userID, int howMany,
