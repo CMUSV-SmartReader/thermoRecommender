@@ -82,11 +82,11 @@ public class GlobalRecommender implements Recommender{
             }
             Double diff = (new Date().getTime() - lastDate.getTime())/(1000d * 60 * 60 * 24);
             Double popularity ;
-            if(article.get("popularity").getClass().equals("Integer")){
+            if(article.get("popularity").getClass().equals("java.lang.Integer")){
                 popularity = (Integer) article.get("popularity") * 1.0d ;
             }
             else{
-                popularity =(Double)  article.get("popularity") * 1.0d;
+                popularity = (Double)  article.get("popularity") * 1.0d;
             }
             globalPreferences.put(id, popularity * Math.exp(1/(diff+1)));
         }
@@ -120,7 +120,7 @@ public class GlobalRecommender implements Recommender{
                 
                 return -Float.compare(r1.getValue(), r2.getValue());
             }});
-        result = result.subList(0, howMany);
+        result = result.subList(0, Math.min(howMany, result.size()));
         return result;
     }
     public List<RecommendedItem> recommend(long userID, int howMany,
