@@ -49,7 +49,7 @@ public class GlobalRecommender implements Recommender{
         lastDate = new Date();
         System.err.println("Create Article Popularity");
         DBCollection userArticles = dbAdapter.getCollection("UserArticle");
-        HashSet<ObjectId> articles = dbAdapter.getArticleIds();
+        HashSet<ObjectId> articles = dbAdapter.getLatestArticleIds();
         HashMap<ObjectId, Double> popularityMatrix = new HashMap<ObjectId, Double>();
         long max = 0, min = 0;
         for(ObjectId id: articles){
@@ -71,7 +71,7 @@ public class GlobalRecommender implements Recommender{
         System.err.println("Create Article Score");
         globalPreferences = new HashMap<ObjectId, Double>();
         DBCollection articles = dbAdapter.getCollection("Article");
-        for(ObjectId id:this.dbAdapter.getArticleIds()){
+        for(ObjectId id:this.dbAdapter.getLatestArticleIds()){
             DBObject article = articles.findOne(new BasicDBObject().append("_id", id));
             Date lastDate = new Date(new Date().getTime() - 1000 * 60 * 60 * 12);
             if(article == null ){
@@ -82,6 +82,9 @@ public class GlobalRecommender implements Recommender{
             }
             Double diff = (new Date().getTime() - lastDate.getTime())/(1000d * 60 * 60 * 24);
             Double popularity ;
+            if(!article.containsField("popularity")){
+                popularity = 0d;
+            }
             if(article.get("popularity").getClass().equals("java.lang.Integer")){
                 popularity = (Integer) article.get("popularity") * 1.0d ;
             }

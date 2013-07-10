@@ -135,10 +135,11 @@ public class MongoAdapter {
         }
         
     }
-    public HashSet<ObjectId> getArticleIds(){
+    public HashSet<ObjectId> getLatestArticleIds(){
         this.makeConnection();
+        
         HashSet<ObjectId> articles = new HashSet<ObjectId>();
-        DBCursor cursor = this.getDB().getCollection("Article").find();
+        DBCursor cursor = this.getDB().getCollection("Article").find(new BasicDBObject().append("publishDate", new BasicDBObject().append("$gte", new Date(new Date().getTime()-7 * 24 * 60 * 60 * 1000))));
         while(cursor.hasNext()){
             articles.add((ObjectId) cursor.next().get("_id"));
             

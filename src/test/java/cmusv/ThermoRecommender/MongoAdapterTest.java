@@ -17,7 +17,7 @@ public class MongoAdapterTest extends TestCase {
         reader.getArticles();
     }
     public void testGetArticleIds(){
-        System.out.println(reader.getArticleIds());
+        System.out.println(reader.getLatestArticleIds().size());
     }
 }
 
