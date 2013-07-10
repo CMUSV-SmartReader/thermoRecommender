@@ -147,10 +147,37 @@ public class MongoAdapter {
         return articles;
     }
     public void updateArticlePopularity(HashMap<ObjectId, Double> popularityMatrix){
-        DBCollection articles = this.getCollection("Article");
+        DBCollection globalArticleRanking = this.getCollection("globalArticleRanking");
+        globalArticleRanking.remove(new BasicDBObject());
         for(ObjectId id:popularityMatrix.keySet()){
-            BasicDBObject update = new BasicDBObject().append("$set", new BasicDBObject().append("popularity", popularityMatrix.get(id)));
-            articles.update(new BasicDBObject().append("_id", id), update);
+            globalArticleRanking.insert(new BasicDBObject().append("_id", id).append("popularity", popularityMatrix.get(id)));
         }
+    }
+    public void updateArticleScore(HashMap<ObjectId, Double> scoreMatrix){
+        DBCollection globalArticleRanking = this.getCollection("globalArticleRanking");
+        for(ObjectId id:scoreMatrix.keySet()){
+            globalArticleRanking.update(new BasicDBObject().append("_id", id), new BasicDBObject().append("$set", new BasicDBObject().append("score", scoreMatrix.get(id))));
+        }
+    }
+    public HashMap<ObjectId, Double> getArticleStatistics(String field){
+        DBCollection globalArticleRanking = getCollection("globalArticleRanking");
+        HashMap<ObjectId, Double>  globalPreferences = new HashMap<ObjectId, Double>();
+        DBCursor cursor = globalArticleRanking.find();
+        while(cursor.hasNext()){
+            DBObject ranking = cursor.next();
+            globalPreferences.put((ObjectId)ranking.get("_id"), (Double)ranking.get(field));
+        }
+        return globalPreferences;
+    }
+    public Date getLastUpdateTime(String type){
+        DBCollection configurations = getCollection("Configuration");
+        DBObject conf = configurations.findOne(new BasicDBObject().append("type", type));
+        if(conf == null) return null; 
+        Date lastTime = (Date) conf.get("lastUpdateTime");
+        return lastTime;
+    }
+    public void updateLastUpdateTime(String type){
+        DBCollection configurations = getCollection("Configuration");
+        configurations.update(new BasicDBObject().append("type", type), new BasicDBObject().append("$set", new BasicDBObject().append("lastUpdateTime", new Date())), true, false);
     }
 }

@@ -6,17 +6,22 @@ import org.bson.types.ObjectId;
 import junit.framework.TestCase;
 
 public class GlobalRecommenderTest extends TestCase {
-
+    private MongoAdapter dbAdapter;
+    private MahoutRecommenderAdapter mahoutAdapter;
+    GlobalRecommender recommender;
+    public GlobalRecommenderTest(){
+        dbAdapter = new MongoAdapter();
+        mahoutAdapter = new MahoutRecommenderAdapter(dbAdapter);
+        recommender = new GlobalRecommender(mahoutAdapter.createDBModel(), dbAdapter);;
+    }
+    
     public void testArticlePopularityCount(){
-        MongoAdapter dbAdapter = new MongoAdapter();
-        MahoutRecommenderAdapter mahoutAdapter = new MahoutRecommenderAdapter(dbAdapter);
-        GlobalRecommender pc = new GlobalRecommender(mahoutAdapter.createDBModel(), dbAdapter);
-        
+        System.out.println(recommender.countArticlePopularity());
+    }
+    public void testArticleScore(){
+        System.out.println(recommender.createArticleScore());
     }
     public void testRecommendation() throws TasteException{
-        MongoAdapter dbAdapter = new MongoAdapter();
-        MahoutRecommenderAdapter mahoutAdapter = new MahoutRecommenderAdapter(dbAdapter);
-        GlobalRecommender pc = new GlobalRecommender(mahoutAdapter.createDBModel(), dbAdapter);
-        pc.recommend(new ObjectId("51cf362ee4b08233e8167fcc").hashCode(), 20);
+        recommender.recommend(new ObjectId("51cf362ee4b08233e8167fcc").hashCode(), 20);
     }
 }

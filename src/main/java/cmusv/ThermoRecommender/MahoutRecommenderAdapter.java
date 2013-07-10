@@ -17,6 +17,8 @@ import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -29,7 +31,9 @@ public class MahoutRecommenderAdapter {
     protected static HashMap<Long, ObjectId> userIdMapping;
     protected static HashMap<Long, ObjectId> articleIdMapping;
     Recommender recommender;
+     
     public MahoutRecommenderAdapter(MongoAdapter reader){
+       
         this.reader = reader;
     }
     public DataModel createDBModel(){
@@ -93,7 +97,7 @@ public class MahoutRecommenderAdapter {
             HashMap<ObjectId, HashMap<ObjectId, Float>> result = new HashMap<ObjectId, HashMap<ObjectId, Float>>();
             while(it.hasNext()){
                 Long userId = it.next();
-                System.out.println("UserId: " + userIdMapping.get(userId));
+                App.getLogger().debug("UserId: " + userIdMapping.get(userId));
                 List<RecommendedItem> items = recommender.recommend(userId, numRecommendations);
                 HashMap<ObjectId, Float> transferedItems = new HashMap<ObjectId, Float>();
                 for(RecommendedItem item: items){
