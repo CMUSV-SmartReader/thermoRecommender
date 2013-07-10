@@ -13,8 +13,9 @@ import junit.framework.TestCase;
 
 public class MahoutRecommenderTest extends TestCase {
     MahoutRecommenderAdapter adapter;
+    MongoAdapter reader;
     public MahoutRecommenderTest(){
-        MongoAdapter reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader", null, null);
+        reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader-test", null, null);
         adapter = new MahoutRecommenderAdapter(reader);
     }
     public void testGetDB(){
@@ -29,6 +30,12 @@ public class MahoutRecommenderTest extends TestCase {
         DataModel dbm = adapter.createDBModel();
         UserSimilarity userSim = new PearsonCorrelationSimilarity(dbm);
         Recommender recommender = new GenericUserBasedRecommender(dbm, new NearestNUserNeighborhood(10, userSim, dbm),userSim);
+        adapter.setRecommender(recommender);
+        adapter.recommendArticles(40);
+    }
+    public void testGlobalRecommendation(){
+        DataModel dbm = adapter.createDBModel();
+        Recommender recommender = new GlobalRecommender(adapter.createDBModel(),reader);
         adapter.setRecommender(recommender);
         adapter.recommendArticles(40);
     }

@@ -1,33 +1,21 @@
 package cmusv.ThermoRecommender;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
 import org.apache.mahout.cf.taste.common.TasteException;
 import org.apache.mahout.cf.taste.impl.common.FastByIDMap;
 import org.apache.mahout.cf.taste.impl.common.LongPrimitiveIterator;
-import org.apache.mahout.cf.taste.impl.model.BooleanPreference;
-import org.apache.mahout.cf.taste.impl.model.GenericBooleanPrefDataModel;
 import org.apache.mahout.cf.taste.impl.model.GenericDataModel;
 import org.apache.mahout.cf.taste.impl.model.GenericPreference;
 import org.apache.mahout.cf.taste.impl.model.GenericUserPreferenceArray;
-import org.apache.mahout.cf.taste.impl.neighborhood.NearestNUserNeighborhood;
-import org.apache.mahout.cf.taste.impl.recommender.GenericUserBasedRecommender;
 import org.apache.mahout.cf.taste.impl.recommender.RandomRecommender;
-import org.apache.mahout.cf.taste.impl.recommender.svd.ALSWRFactorizer;
-import org.apache.mahout.cf.taste.impl.recommender.svd.SVDRecommender;
-import org.apache.mahout.cf.taste.impl.similarity.PearsonCorrelationSimilarity;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.model.Preference;
 import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.apache.mahout.cf.taste.similarity.UserSimilarity;
-import org.bson.BSONLazyDecoder;
-import org.bson.BasicBSONDecoder;
 import org.bson.types.ObjectId;
 
 import com.mongodb.DBCollection;
@@ -35,7 +23,6 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.DBRef;
 import com.mongodb.MongoException;
-import com.mongodb.util.JSONCallback;
 
 public class MahoutRecommenderAdapter {
     protected MongoAdapter reader;
@@ -46,12 +33,12 @@ public class MahoutRecommenderAdapter {
         this.reader = reader;
     }
     public DataModel createDBModel(){
-        reader.makeConnection();
+        
         if(userIdMapping== null) userIdMapping = new HashMap<Long, ObjectId>();
         if(articleIdMapping== null) articleIdMapping = new HashMap<Long, ObjectId>();
         
         HashMap<Long, ArrayList<Preference>> prefs = new HashMap<Long, ArrayList<Preference>>();
-        DBCollection userArticles = reader.getDB().getCollection("UserArticle");
+        DBCollection userArticles = reader.getCollection("UserArticle");
         DBCursor cursor = userArticles.find();
         
         while (cursor.hasNext()) {
@@ -65,7 +52,8 @@ public class MahoutRecommenderAdapter {
             Long aID = (long) articleID.hashCode();
             articleIdMapping.put(aID, articleID);
             
-            float rating = (Boolean) (userArticle.get("isRead"))?0.9f:0;
+            
+            float rating = (float) ((Boolean) (userArticle.get("isRead"))?0.9f:0.0f);
             if(!prefs.containsKey(userID)) 
                 prefs.put((long)userID.hashCode(), new ArrayList<Preference>());
             prefs.get(uID).add(new GenericPreference(uID, aID, rating));

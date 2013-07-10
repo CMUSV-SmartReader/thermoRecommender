@@ -23,6 +23,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
+import com.mongodb.DBRef;
 import com.mongodb.MongoClient;
 
 public class MongoAdapter {
@@ -52,13 +53,7 @@ public class MongoAdapter {
     public DB getDB(){
         return db;
     }
-    public HashSet<ObjectId> getArticleIds(){
-        this.makeConnection();
-        HashSet<ObjectId> articles = new HashSet<ObjectId>();
-        return articles;
-        
-    }
-    public boolean makeConnection(){
+    private boolean makeConnection(){
         try {
             MongoClient mongoClient = new MongoClient(dbHost, dbPort);
            
@@ -75,7 +70,12 @@ public class MongoAdapter {
             return false;
         }
     }
+    public DBCollection getCollection(String collection){
+        this.makeConnection();
+        return this.getDB().getCollection(collection);
+    }
     public boolean getArticles() {
+        this.makeConnection();
         LuceneIndexer indexer = new LuceneIndexer();
         String collectionName = "Article"; 
         if(!db.collectionExists(collectionName)) return false;
@@ -117,7 +117,8 @@ public class MongoAdapter {
             List<BasicDBObject> articles = new ArrayList<BasicDBObject>();
             for(ObjectId articleId : recommendations.get(userID).keySet()){
                 BasicDBObject article = new BasicDBObject();
-                article.put("articleId", articleId);
+                DBRef articleRef = new DBRef(db, "Article", articleId); 
+                article.put("article", articleRef);
                 article.put("score", recommendations.get(userID).get(articleId));
                 articles.add(article);
             }
@@ -133,5 +134,22 @@ public class MongoAdapter {
             user.findAndModify(query, update);
         }
         
+    }
+    public HashSet<ObjectId> getArticleIds(){
+        this.makeConnection();
+        HashSet<ObjectId> articles = new HashSet<ObjectId>();
+        DBCursor cursor = this.getDB().getCollection("Article").find();
+        while(cursor.hasNext()){
+            articles.add((ObjectId) cursor.next().get("_id"));
+            
+        }
+        return articles;
+    }
+    public void updateArticlePopularity(HashMap<ObjectId, Double> popularityMatrix){
+        DBCollection articles = this.getCollection("Article");
+        for(ObjectId id:popularityMatrix.keySet()){
+            BasicDBObject update = new BasicDBObject().append("$set", new BasicDBObject().append("popularity", popularityMatrix.get(id)));
+            articles.update(new BasicDBObject().append("_id", id), update);
+        }
     }
 }

@@ -1,6 +1,4 @@
 package cmusv.ThermoRecommender;
-
-import com.mongodb.*;
 /**
  * Hello world!
  *

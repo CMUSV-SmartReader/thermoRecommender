@@ -6,16 +6,18 @@ public class MongoAdapterTest extends TestCase {
     protected MongoAdapter reader;
     public MongoAdapterTest(String testName){
         super(testName);
-        reader = new MongoAdapter("54.215.148.76", 27017, "thermoreader", null, null);
+        reader = new MongoAdapter("test.lydian.tw", 27017, "thermoreader-test", null, null);
     }
     
     public void testConnection()
     {
-        assertTrue(reader.makeConnection());
+        //assertTrue(reader.makeConnection());
     }
     public void testGetArticles() {
-        reader.makeConnection();
         reader.getArticles();
+    }
+    public void testGetArticleIds(){
+        System.out.println(reader.getArticleIds());
     }
 }
 
