@@ -1,7 +1,9 @@
 package cmusv.ThermoRecommender;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.mahout.cf.taste.common.TasteException;
@@ -17,9 +19,11 @@ import org.apache.mahout.cf.taste.model.PreferenceArray;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.bson.types.ObjectId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -36,52 +40,66 @@ public class MahoutRecommenderAdapter {
        
         this.reader = reader;
     }
+    
     public DataModel createDBModel(){
         
         if(userIdMapping== null) userIdMapping = new HashMap<Long, ObjectId>();
         if(articleIdMapping== null) articleIdMapping = new HashMap<Long, ObjectId>();
         
-        HashMap<Long, ArrayList<Preference>> prefs = new HashMap<Long, ArrayList<Preference>>();
-        DBCollection userArticles = reader.getCollection("UserArticle");
-        DBCursor cursor = userArticles.find();
+        Date fromDate = DateUtils.getDaysAgo(5);
         
-        while (cursor.hasNext()) {
-            DBObject userArticle = cursor.next();
-            
-            ObjectId userID = (ObjectId) ((DBRef)userArticle.get("user")).getId();
-            Long uID = (long) userID.hashCode();
-            userIdMapping.put(uID, userID);
-            
-            ObjectId articleID = (ObjectId) ((DBRef)userArticle.get("article")).getId();
-            Long aID = (long) articleID.hashCode();
-            articleIdMapping.put(aID, articleID);
-            
-            
-            float rating = (float) ((Boolean) (userArticle.get("isRead"))?0.9f:0.0f);
-            if(!prefs.containsKey(userID)) 
-                prefs.put((long)userID.hashCode(), new ArrayList<Preference>());
-            prefs.get(uID).add(new GenericPreference(uID, aID, rating));
+        HashMap<Long, ArrayList<Preference>> prefs = new HashMap<Long, ArrayList<Preference>>();
+        DBCursor articleCursor = (DBCursor) reader.getArticles(fromDate);
+        
+        for(DBObject user: reader.getCollection("User").find()){
+            ObjectId userId = (ObjectId) user.get("_id");
+            userIdMapping.put((long) userId.hashCode(), userId);
         }
+        
+        for(DBObject article : articleCursor.copy()){
+            ObjectId articleId = (ObjectId) article.get("_id");
+            articleIdMapping.put((long) articleId.hashCode(), articleId);
+        }
+        for(long uid: userIdMapping.keySet()){
+            ObjectId userId = userIdMapping.get(uid);
+            
+            DBObject user = reader.getCollection("User").findOne(new BasicDBObject().append("_id",  userId));
+            List<ObjectId> userFeeds = null;
+            if(user.containsField("feeds")){
+                userFeeds = new ArrayList<ObjectId>(Collections2.transform((BasicDBList)user.get("feeds"), new Function<Object, ObjectId>(){
+                    @Override
+                    public ObjectId apply(Object input) {
+                        return (ObjectId) ((DBRef)input).getId();
+                    }
+                }));
+            }
+            BasicDBObject query = (BasicDBObject) articleCursor.getQuery();
+            if(userFeeds != null) query.append("feed.$id", new BasicDBObject().append("$in", userFeeds));
+            HashSet<ObjectId> userArticles = new HashSet<ObjectId>();
+            for(DBObject article: reader.getCollection("Article").find(query)){
+                userArticles.add((ObjectId) article.get("_id"));
+            }
+            HashSet<ObjectId> readArticles = new HashSet<ObjectId>();
+            for(DBObject userArticle: reader.getCollection("UserArticle").find( new BasicDBObject().append("user.$id", userId))){
+                readArticles.add((ObjectId) userArticle.get("_id"));
+            }
+            for(ObjectId articleId: userArticles){
+                long aid = articleId.hashCode();
+                float rating = (float) ((readArticles.contains(articleId))?0.9f:0.005f);
+                if(!prefs.containsKey(userId)) 
+                    prefs.put((long)userId.hashCode(), new ArrayList<Preference>());
+                prefs.get((long)userId.hashCode()).add(new GenericPreference(uid, aid, rating));
+            }
+        }
+        
         FastByIDMap<PreferenceArray> userData = new FastByIDMap<PreferenceArray>();
         for(Long userID :prefs.keySet()){
             userData.put(userID, new  GenericUserPreferenceArray(prefs.get(userID)));
         }
-        cursor =reader.getCollection("User").find();
-        while(cursor.hasNext()){
-            ObjectId uID = (ObjectId) cursor.next().get("_id");
-            Long userID = (long) uID.hashCode();
-            
-            if(!userData.containsKey(userID)){
-                userData.put(userID, new GenericUserPreferenceArray(0));
-                userIdMapping.put(userID, uID);
-            }
-        }
         return new GenericDataModel(userData);
     }
     
-    public void clustering(){
-        
-    }
+    
     public void setRecommender(Recommender recommender){
         this.recommender = recommender;
     }
@@ -99,12 +117,17 @@ public class MahoutRecommenderAdapter {
                 Long userId = it.next();
                 App.getLogger().debug("UserId: " + userIdMapping.get(userId));
                 List<RecommendedItem> items = recommender.recommend(userId, numRecommendations);
+                System.out.println("Recommended items:" +items.size());
                 HashMap<ObjectId, Float> transferedItems = new HashMap<ObjectId, Float>();
                 for(RecommendedItem item: items){
                     transferedItems.put(articleIdMapping.get(item.getItemID()), item.getValue());
                 }
+                if(items.size() < numRecommendations){
+                  //reader.getCollection("Article").find(new BasicDBObject());
+                }
                 result.put(userIdMapping.get(userId), transferedItems);
             }
+            
             reader.setRecommendation(result);
             
         } catch (TasteException e) {

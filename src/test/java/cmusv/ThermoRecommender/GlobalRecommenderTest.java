@@ -8,7 +8,7 @@ import junit.framework.TestCase;
 public class GlobalRecommenderTest extends TestCase {
     private MongoAdapter dbAdapter;
     private MahoutRecommenderAdapter mahoutAdapter;
-    GlobalRecommender recommender;
+    private GlobalRecommender recommender;
     public GlobalRecommenderTest(){
         dbAdapter = new MongoAdapter();
         mahoutAdapter = new MahoutRecommenderAdapter(dbAdapter);
@@ -17,6 +17,7 @@ public class GlobalRecommenderTest extends TestCase {
     
     public void testArticlePopularityCount(){
         System.out.println(recommender.countArticlePopularity());
+        assertEquals("", true, recommender.countArticlePopularity());
     }
     public void testArticleScore(){
         System.out.println(recommender.createArticleScore());

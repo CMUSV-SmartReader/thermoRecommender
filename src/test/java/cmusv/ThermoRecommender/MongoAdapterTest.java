@@ -14,7 +14,7 @@ public class MongoAdapterTest extends TestCase {
         //assertTrue(reader.makeConnection());
     }
     public void testGetArticles() {
-        reader.getArticles();
+        reader.getArticles(DateUtils.getDaysAgo(5));
     }
     public void testGetArticleIds(){
         System.out.println(reader.getLatestArticleIds().size());

@@ -11,8 +11,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.bson.types.ObjectId;
 
 
@@ -74,40 +72,16 @@ public class MongoAdapter {
         this.makeConnection();
         return this.getDB().getCollection(collection);
     }
-    public boolean getArticles() {
+    public Iterable<DBObject> getArticles(Date fromDate) {
         this.makeConnection();
-        LuceneIndexer indexer = new LuceneIndexer();
         String collectionName = "Article"; 
-        if(!db.collectionExists(collectionName)) return false;
-        BasicDBObject query = new BasicDBObject();
-        long DAY_IN_MS = 1000 * 60 * 60 * 24;
-        Date daysAgo =new Date(new Date().getTime() - 5 * DAY_IN_MS); 
-        query.put("publishDate", BasicDBObjectBuilder.start("$gte", daysAgo).get());
-        DBCursor cursor = db.getCollection(collectionName).find(query);
+        if(!db.collectionExists(collectionName)) return null;
         
-        String folderName = "temp/articles/";
-        File tempFolder = new File(folderName);
-        for (File file : tempFolder.listFiles()) {
-            file.delete();
-        }   
-        while(cursor.hasNext()){
-            DBObject article = cursor.next();
-            if(article.get("desc") == null || article.get("_id") == null) continue;
-            indexer.addDocument(article.get("_id").toString(), article.get("desc").toString());
-            File file = new File(folderName + article.get("_id"));
-            try {
-                file.createNewFile();
-                FileWriter fw = new FileWriter(file.getAbsoluteFile());
-                BufferedWriter bw = new BufferedWriter(fw);
-                bw.write(article.get("desc").toString());
-                bw.close();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        indexer.createIndexing();
-        return true;
+        BasicDBObject query = new BasicDBObject();
+        query.put("publishDate", BasicDBObjectBuilder.start("$gte", fromDate).get());
+        DBCursor cursor = db.getCollection(collectionName).find(query);
+        return cursor; 
+
     }
     public void setRecommendation(HashMap<ObjectId, HashMap<ObjectId, Float>> recommendations){
         this.makeConnection();
@@ -116,6 +90,7 @@ public class MongoAdapter {
         for(ObjectId userID: recommendations.keySet() ){
             List<BasicDBObject> articles = new ArrayList<BasicDBObject>();
             for(ObjectId articleId : recommendations.get(userID).keySet()){
+                //if(articleId == null) continue;
                 BasicDBObject article = new BasicDBObject();
                 DBRef articleRef = new DBRef(db, "Article", articleId); 
                 article.put("article", articleRef);
@@ -170,6 +145,7 @@ public class MongoAdapter {
         return globalPreferences;
     }
     public Date getLastUpdateTime(String type){
+        System.out.println(type);
         DBCollection configurations = getCollection("Configuration");
         DBObject conf = configurations.findOne(new BasicDBObject().append("type", type));
         if(conf == null) return null; 

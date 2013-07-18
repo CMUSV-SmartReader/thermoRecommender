@@ -7,22 +7,15 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-
 import java.util.HashSet;
-import java.util.logging.Logger;
-import java.util.prefs.Preferences;
-
 import org.bson.types.ObjectId;
 import org.apache.mahout.cf.taste.common.Refreshable;
 import org.apache.mahout.cf.taste.common.TasteException;
-import org.apache.mahout.cf.taste.impl.model.GenericPreference;
 import org.apache.mahout.cf.taste.impl.recommender.GenericRecommendedItem;
 import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.IDRescorer;
 import org.apache.mahout.cf.taste.recommender.RecommendedItem;
 import org.apache.mahout.cf.taste.recommender.Recommender;
-import org.apache.mahout.cf.taste.model.Preference;
-
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
@@ -35,38 +28,31 @@ public class GlobalRecommender implements Recommender{
     private DataModel dbm;
     private static HashMap<ObjectId, Double> globalPreferences;
     private static HashMap<ObjectId, Double> popularityMatrix;
-    private DBCollection configuration;
     public GlobalRecommender(DataModel dbm, MongoAdapter dbAdapter){
         this.dbAdapter = dbAdapter;
         this.dbm = dbm;
-         
-       
     }
-    
+    public DataModel getDataModel() {
+        return dbm;
+    }
     public HashMap<ObjectId, Double> countArticlePopularity(){
         Date lastTime = dbAdapter.getLastUpdateTime("articlePopularity");
-        if(lastTime != null && lastTime.after(DateUtils.getHoursAgo(5))){
-            //if(popularityMatrix != null) return popularityMatrix;
+        if(lastTime != null && lastTime.after(DateUtils.getHoursAgo(3))){
             popularityMatrix = dbAdapter.getArticleStatistics("popularity");
             return popularityMatrix;
         }
         
-        App.getLogger().debug("Create Article Popularity");
-        DBCollection userArticles = dbAdapter.getCollection("UserArticle");
-        HashSet<ObjectId> articles = dbAdapter.getLatestArticleIds();
-        popularityMatrix = new HashMap<ObjectId, Double>();
-        long max = 0, min = 0;
-        for(ObjectId id: articles){
-            long popularity = userArticles.getCount(new BasicDBObject().append("article._id", id));
-            if(popularity > 0 ) System.err.println(id);
-            if(popularity > max ) max = popularity;
-            if(popularity < min) min = popularity;
-            popularityMatrix.put(id, (double) popularity);
-        }
-        double diff = (max-min==0)?0.001:(max-min);
+        App.getLogger().debug("Normalize Article Popularity");
         
-        for(ObjectId id:articles){
-            popularityMatrix.put(id, (popularityMatrix.get(id) - min)/ diff);
+       
+        DBCursor cursor = (DBCursor) dbAdapter.getArticles(DateUtils.getDaysAgo(10));
+        popularityMatrix = new HashMap<ObjectId, Double>();
+        long max = (int) cursor.copy().sort(new BasicDBObject().append("popularity", -1)).limit(1).next().get("popularity");
+        long min = (int) cursor.copy().sort(new BasicDBObject().append("popularity", 1)).limit(1).next().get("popularity");;
+        
+        for(DBObject article: cursor){
+            double popularity = ((int)article.get("popularity") - min + 0.0001) / (max-min+0.0001);
+            popularityMatrix.put((ObjectId) article.get("_id"), (double) popularity);
         }
         App.getLogger().debug("Push to DB");
         dbAdapter.updateArticlePopularity(popularityMatrix);
@@ -76,7 +62,7 @@ public class GlobalRecommender implements Recommender{
     }
     public HashMap<ObjectId, Double> createArticleScore(){
         Date lastTime = dbAdapter.getLastUpdateTime("articleScore");
-        if(lastTime != null && lastTime.after(DateUtils.getHoursAgo(5))){
+        if(lastTime != null && lastTime.after(DateUtils.getHoursAgo(1))){
             globalPreferences = dbAdapter.getArticleStatistics("score");
             return globalPreferences;
         }
@@ -105,35 +91,24 @@ public class GlobalRecommender implements Recommender{
         dbAdapter.updateLastUpdateTime("articleScore");
         App.getLogger().debug("Finish Create Article Score");
         return globalPreferences;
-        /*
-        */
     }
-    public void refresh(Collection<Refreshable> alreadyRefreshed) {
-        // TODO Auto-generated method stub
-        
-    }
+    
     public List<RecommendedItem> recommend(long userID, int howMany)
             throws TasteException {
         this.countArticlePopularity();
         this.createArticleScore();
         
         ObjectId uid = MahoutRecommenderAdapter.userIdMapping.get(userID);
-        DBCollection users = dbAdapter.getCollection("User");
-        DBCollection userArtocles = dbAdapter.getCollection("UserArticle");
-        DBObject user = users.findOne(new BasicDBObject().append("_id", uid));
-        System.out.println("Users: " + user.get("articles"));
-        BasicDBList articles = (BasicDBList) user.get("articles");
+        DBCollection userArticles = dbAdapter.getCollection("UserArticle");
         List<RecommendedItem> result = new ArrayList<RecommendedItem>();
-        if(articles == null){
-            return result;
-        }
-        for(Object obj: articles ){
-            DBRef article = (DBRef) obj;
-            ObjectId articleID = (ObjectId)article.getId();
+        
+        for(DBObject article:  dbAdapter.getArticles(DateUtils.getDaysAgo(5))){
+        
+            ObjectId articleID = (ObjectId)article.get("_id");
             double score = (!globalPreferences.containsKey(articleID))? 0.5: globalPreferences.get(articleID);
             
-            if(userArtocles.findOne(new BasicDBObject().append("user.$id", uid).append("article.$id", articleID)) != null)
-                continue;
+            if(userArticles.findOne(new BasicDBObject().append("user.$id", uid).append("article.$id", articleID)) != null)
+               continue;
             result.add(new GenericRecommendedItem(articleID.hashCode(), (float) score ));
         }
         
@@ -143,10 +118,12 @@ public class GlobalRecommender implements Recommender{
                 
                 return -Float.compare(r1.getValue(), r2.getValue());
             }});
-        System.out.println(result.size());
         result = result.subList(0, Math.min(howMany, result.size()));
-        
         return result;
+    }
+    public void refresh(Collection<Refreshable> alreadyRefreshed) {
+        // TODO Auto-generated method stub
+        
     }
     public List<RecommendedItem> recommend(long userID, int howMany,
             IDRescorer rescorer) throws TasteException {
@@ -168,7 +145,5 @@ public class GlobalRecommender implements Recommender{
         // TODO Auto-generated method stub
         
     }
-    public DataModel getDataModel() {
-        return dbm;
-    }
+    
 }

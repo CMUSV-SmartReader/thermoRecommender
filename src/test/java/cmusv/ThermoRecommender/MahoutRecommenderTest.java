@@ -34,7 +34,6 @@ public class MahoutRecommenderTest extends TestCase {
         adapter.recommendArticles(40);
     }
     public void testGlobalRecommendation(){
-        DataModel dbm = adapter.createDBModel();
         Recommender recommender = new GlobalRecommender(adapter.createDBModel(),reader);
         adapter.setRecommender(recommender);
         adapter.recommendArticles(40);

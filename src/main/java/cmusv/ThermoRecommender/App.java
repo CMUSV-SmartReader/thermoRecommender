@@ -1,6 +1,5 @@
 package cmusv.ThermoRecommender;
 
-import org.apache.mahout.cf.taste.model.DataModel;
 import org.apache.mahout.cf.taste.recommender.Recommender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,6 @@ public class App
         MongoAdapter mongo = new MongoAdapter();
         MahoutRecommenderAdapter adapter = new MahoutRecommenderAdapter(mongo);
        
-        DataModel dbm = adapter.createDBModel();
         Recommender recommender = new GlobalRecommender(adapter.createDBModel(), mongo);
         adapter.setRecommender(recommender);
         adapter.recommendArticles(40);
