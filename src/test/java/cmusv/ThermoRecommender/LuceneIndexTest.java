@@ -1,5 +1,7 @@
 package cmusv.ThermoRecommender;
 
+import java.io.IOException;
+
 import junit.framework.TestCase;
 
 public class LuceneIndexTest extends TestCase {
@@ -12,8 +14,18 @@ public class LuceneIndexTest extends TestCase {
     public void testIndexer() throws Throwable{
         indexer.mongoToLucene(dbAdapter);
     }
+    public void testLuceneToSequence() throws Throwable {
+        indexer.luceneToSequence();
+        indexer.sequenceToVector();
+        
+    }
     public void testLDA() throws Throwable{
         indexer.runLDA();
+        
+    }
+    
+    public void testShowTopics() throws Throwable{
+        indexer.getTopics();
         
     }
 }
