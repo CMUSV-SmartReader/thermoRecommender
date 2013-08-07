@@ -11,10 +11,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+
 import org.bson.types.ObjectId;
 
 
 
+
+
+
+import cmusv.ThermoRecommender.DefaultCategorizer.FeedFuryCateogry;
+
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.DB;
@@ -110,6 +117,20 @@ public class MongoAdapter {
         }
         
     }
+    public void setFeedCategory(String category, String feedUrl) {
+        DBCollection articleCategory = this.getCollection("ArticleCategory");
+        DBObject categoryObj = articleCategory.findOne(new BasicDBObject().append("name", category));
+        if(categoryObj == null) return;
+        DBCollection feeds = this.getCollection("Feed");
+        DBObject feed = feeds.findOne(new BasicDBObject().append("xmlUrl", feedUrl));
+        DBRef ref = new DBRef(db, "ArticleCategory", categoryObj.get("_id")); 
+        if(feed == null){
+            feeds.insert(new BasicDBObject().append("xmlUrl", feedUrl).append("title", feedUrl).append("className", "models.Feed").append("articleCategory", ref));
+        }
+        else{
+            feeds.update(new BasicDBObject().append("xmlUrl", feedUrl), new BasicDBObject().append("$set", new BasicDBObject().append("articleCategory", ref)));
+        }
+    }
     public HashSet<ObjectId> getLatestArticleIds(){
         this.makeConnection();
         
@@ -155,5 +176,35 @@ public class MongoAdapter {
     public void updateLastUpdateTime(String type){
         DBCollection configurations = getCollection("Configuration");
         configurations.update(new BasicDBObject().append("type", type), new BasicDBObject().append("$set", new BasicDBObject().append("lastUpdateTime", new Date())), true, false);
+    }
+    public void setDuplicateArticles(HashMap<Integer, ArrayList<HashMap<String, Double>>> topicDocsDist){
+        DBCollection Articles = getCollection("Articles");
+        
+        for(ArrayList<HashMap<String, Double>> docsDist:topicDocsDist.values()){
+            System.out.println(docsDist.size());
+            List<BasicDBObject> articles = new ArrayList<BasicDBObject>();
+            
+            BasicDBList articleIDList = new BasicDBList();
+            for(HashMap<String, Double> articleItem:docsDist) {
+                String articleID = articleItem.keySet().iterator().next();
+                Double articleValue = articleItem.get(articleID);
+                BasicDBObject article = new BasicDBObject();
+                articleIDList.add(new ObjectId(articleID));
+                DBRef articleRef = new DBRef(db, "Article", articleID); 
+                article.put("article", articleRef);
+                article.put("score", articleValue);
+                articles.add(article);
+            }
+            BasicDBObject query = new BasicDBObject().append("_id", new BasicDBObject().append("$in", articleIDList));
+            System.out.println(query);
+            BasicDBObject update = new BasicDBObject().append("$unset", new BasicDBObject().append("dups", null));
+            //Articles.findAndModify(query, update);
+            
+            update = new BasicDBObject().append("$set", new BasicDBObject().append("dups", articles));
+            Articles.findAndModify(query, update); 
+            
+            
+        }
+        
     }
 }

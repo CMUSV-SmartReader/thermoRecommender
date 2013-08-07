@@ -49,14 +49,14 @@ public class MahoutRecommenderAdapter {
         Date fromDate = DateUtils.getDaysAgo(5);
         
         HashMap<Long, ArrayList<Preference>> prefs = new HashMap<Long, ArrayList<Preference>>();
-        DBCursor articleCursor = (DBCursor) reader.getArticles(fromDate);
+        Iterable articleCursor = (Iterable) reader.getArticles(fromDate);
         
         for(DBObject user: reader.getCollection("User").find()){
             ObjectId userId = (ObjectId) user.get("_id");
             userIdMapping.put((long) userId.hashCode(), userId);
         }
         
-        for(DBObject article : articleCursor.copy()){
+        for(DBObject article : ((DBCursor)articleCursor).copy()){
             ObjectId articleId = (ObjectId) article.get("_id");
             articleIdMapping.put((long) articleId.hashCode(), articleId);
         }
@@ -73,7 +73,7 @@ public class MahoutRecommenderAdapter {
                     }
                 }));
             }
-            BasicDBObject query = (BasicDBObject) articleCursor.getQuery();
+            BasicDBObject query = (BasicDBObject)((DBCursor)articleCursor).getQuery();
             if(userFeeds != null) query.append("feed.$id", new BasicDBObject().append("$in", userFeeds));
             HashSet<ObjectId> userArticles = new HashSet<ObjectId>();
             for(DBObject article: reader.getCollection("Article").find(query)){

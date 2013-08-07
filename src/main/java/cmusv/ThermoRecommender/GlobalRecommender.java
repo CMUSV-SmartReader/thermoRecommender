@@ -36,27 +36,17 @@ public class GlobalRecommender implements Recommender{
         return dbm;
     }
     public HashMap<ObjectId, Double> countArticlePopularity(){
-        Date lastTime = dbAdapter.getLastUpdateTime("articlePopularity");
-        if(lastTime != null && lastTime.after(DateUtils.getHoursAgo(3))){
-            popularityMatrix = dbAdapter.getArticleStatistics("popularity");
+        if(popularityMatrix != null){
             return popularityMatrix;
         }
-        
-        App.getLogger().debug("Normalize Article Popularity");
-        
-       
         DBCursor cursor = (DBCursor) dbAdapter.getArticles(DateUtils.getDaysAgo(10));
-        popularityMatrix = new HashMap<ObjectId, Double>();
         long max = (int) cursor.copy().sort(new BasicDBObject().append("popularity", -1)).limit(1).next().get("popularity");
         long min = (int) cursor.copy().sort(new BasicDBObject().append("popularity", 1)).limit(1).next().get("popularity");;
-        
-        for(DBObject article: cursor){
+        popularityMatrix = new HashMap<ObjectId, Double>();
+        for(DBObject article:cursor.copy()){
             double popularity = ((int)article.get("popularity") - min + 0.0001) / (max-min+0.0001);
-            popularityMatrix.put((ObjectId) article.get("_id"), (double) popularity);
+            popularityMatrix.put((ObjectId)article.get("_id"), popularity);
         }
-        App.getLogger().debug("Push to DB");
-        dbAdapter.updateArticlePopularity(popularityMatrix);
-        dbAdapter.updateLastUpdateTime("articlePopularity");
         App.getLogger().debug("Finish Create Article Popularity");
         return popularityMatrix;
     }

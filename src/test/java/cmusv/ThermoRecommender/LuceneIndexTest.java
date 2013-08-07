@@ -25,7 +25,12 @@ public class LuceneIndexTest extends TestCase {
     }
     
     public void testShowTopics() throws Throwable{
-        indexer.getTopics();
+        //indexer.getTopics();
+        dbAdapter.setDuplicateArticles(indexer.getTopics());
+        
+    }
+    public void tearDown(){
+        System.out.println("AFTER");
         
     }
 }
